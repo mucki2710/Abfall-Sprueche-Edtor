@@ -405,11 +405,43 @@
     <h3>Projekt</h3>
     <div class="btns">
       <button type="button" class="secondary" id="saveProject">Projekt speichern</button>
-      <button type="button" class="secondary" id="loadProject">Projekt laden</button>
+      <button type="button" class="secondary" id="loadProjectLocal">Projekt lokal laden</button>
       <input type="file" id="loadFile" accept="application/json" style="display:none">
     </div>
 
-    <div class="btns">
+    <div class="rowAuto">
+      <div>
+        <label for="projectSelect">Projekt-Auswahl (GitHub/Repo)</label>
+        <select id="projectSelect">
+          <option value="">– bitte wählen –</option>
+          <option value="GIB_MIR_DEN_REST_1.json">GIB_MIR_DEN_REST_1</option>
+          <option value="GIB_MIR_DEN_REST_2.json">GIB_MIR_DEN_REST_2</option>
+          <option value="IHRE_PAPIERE_BITTE_.json">IHRE_PAPIERE_BITTE_</option>
+          <option value="PLASTIK-PARKPLATZ.json">PLASTIK-PARKPLATZ</option>
+          <option value="__custom__">Benutzerdefiniert…</option>
+        </select>
+      </div>
+      <button type="button" class="secondary" id="loadProjectSelectBtn" style="min-width:auto;padding:8px 10px;">
+        Auswahl laden
+      </button>
+    </div>
+
+    <div class="rowAuto">
+      <div>
+        <label for="projectUrl">Projekt von GitHub / URL laden (Dateiname im Repo, Raw- oder Blob-Link)</label>
+        <input id="projectUrl" type="text" placeholder="z. B. GIB_MIR_DEN_REST_1.json oder https://github.com/.../blob/.../projekt.json">
+      </div>
+      <button type="button" class="secondary" id="loadProjectUrl" style="min-width:auto;padding:8px 10px;">Von URL laden</button>
+    </div>
+
+    <div class="hint">
+      <b>Wichtig:</b> „Projekt lokal laden“ öffnet immer den Dateidialog (Browser-Regel).<br>
+      Für GitHub/Internet nimm „Auswahl laden“ oder „Von URL laden“ (wird per <code>fetch()</code> geholt).<br>
+      Du kannst sogar einen GitHub-<code>blob</code>-Link einfügen – der wird automatisch in eine Raw-URL umgewandelt.
+    </div>
+
+    <!-- ===== Ende Projektblock ===== -->
+<div class="btns">
       <button type="button" id="apply">Übernehmen</button>
       <button type="button" class="secondary" id="reset">Reset</button>
       <button type="button" class="secondary" id="exportHtml">Export (HTML, bulletproof)</button>
@@ -417,7 +449,7 @@
     </div>
 
     <!-- ✅ NEU: Postkarten-Print -->
-    <div class="btns">
+    <div class="btns">o
       <button type="button" class="secondary" id="printPostcards">
         🖨️ Sprüche als Postkarten drucken (A6)
       </button>
@@ -1105,9 +1137,59 @@ body{
 
 
 
+    
+// --- Projekt von GitHub/URL laden ---
+function toRawGitHubUrl(u){
+  u = (u || "").trim();
+  // https://github.com/OWNER/REPO/blob/BRANCH/path/file.json
+  // -> https://raw.githubusercontent.com/OWNER/REPO/BRANCH/path/file.json
+  const m = u.match(/^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/blob\/([^\/]+)\/(.+)$/);
+  if (m) return `https://raw.githubusercontent.com/${m[1]}/${m[2]}/${m[3]}/${m[4]}`;
+  return u;
+}
+
+async function loadProjectFromUrl(input){
+  let u = (input || "").trim();
+  if (!u) throw new Error("Keine URL/Datei angegeben.");
+
+  // Wenn nur Dateiname angegeben wurde, versuchen wir zuerst relativ (GitHub Pages),
+  // und dann (falls vorhanden) über die gespeicherte Raw-Base aus dem JSON-Loader.
+  const candidates = [];
+
+  // 1) komplette URL (oder github.com/blob) -> direkt
+  if (/^https?:\/\//i.test(u)) {
+    candidates.push(toRawGitHubUrl(u));
+  } else {
+    // 2) Dateiname relativ zur aktuellen Seite (GitHub Pages)
+    candidates.push(new URL(u, new URL(".", location.href)).href);
+
+    // 3) falls lokal per file:// geöffnet, kann der relative Fetch blockiert sein.
+    //    Dann nutzen wir die (optional) im JSON-Loader gespeicherte Raw-Base.
+    try{
+      const rawBase = localStorage.getItem(JSON_BASE_KEY); // aus dem Sprüche-JSON-Loader
+      if (rawBase) candidates.push(new URL(u, rawBase).href);
+    }catch(e){}
+  }
+
+  let lastErr = null;
+  for (const url of candidates){
+    try{
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      const state = await res.json();
+      if (!setState(state)) throw new Error("Ungültiges Projektformat (State).");
+      saveToLocal();
+      return true;
+    }catch(e){
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error("Projekt konnte nicht geladen werden.");
+}
+
     // Projekt speichern/laden
     el("saveProject").addEventListener("click", downloadProject);
-    el("loadProject").addEventListener("click", () => el("loadFile").click());
+    el("loadProjectLocal").addEventListener("click", () => el("loadFile").click());
     el("loadFile").addEventListener("change", async (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
@@ -1121,6 +1203,74 @@ body{
       }finally{
         e.target.value = "";
       }
+
+
+// Projekt-Dropdown (GitHub/Repo)
+const PROJECT_SELECT_KEY = "poster_customizer_project_select_v1";
+try{
+  const savedSel = localStorage.getItem(PROJECT_SELECT_KEY) || "";
+  if (savedSel && el("projectSelect")) el("projectSelect").value = savedSel;
+}catch(e){}
+
+function syncProjectSelectToInput(){
+  const sel = el("projectSelect")?.value || "";
+  if (!sel) return;
+  if (sel === "__custom__"){
+    // nichts überschreiben
+    el("projectUrl")?.focus();
+    return;
+  }
+  if (el("projectUrl")) el("projectUrl").value = sel;
+}
+
+el("projectSelect")?.addEventListener("change", () => {
+  const sel = el("projectSelect")?.value || "";
+  try{ localStorage.setItem(PROJECT_SELECT_KEY, sel); }catch(e){}
+  syncProjectSelectToInput();
+});
+
+el("loadProjectSelectBtn")?.addEventListener("click", async () => {
+  const sel = el("projectSelect")?.value || "";
+  const v = (sel && sel !== "__custom__") ? sel : (el("projectUrl")?.value || "");
+  if (!v.trim()){
+    alert("Bitte ein Projekt auswählen oder eine URL/Datei eingeben.");
+    return;
+  }
+  try{
+    await loadProjectFromUrl(v);
+  }catch(err){
+    alert("Projekt konnte nicht geladen werden.\n\n" +
+          "Eingabe: " + v + "\n" +
+          "Tipp: Auf GitHub Pages reicht oft der Dateiname. Alternativ Raw-URL nutzen.\n\n" +
+          "Details: " + (err?.message || err));
+  }
+});
+
+// Initial einmal synchronisieren (falls Auswahl gesetzt)
+syncProjectSelectToInput();
+
+
+// Projekt von URL/GitHub laden
+el("loadProjectUrl")?.addEventListener("click", async () => {
+  const v = el("projectUrl")?.value || "";
+  try{
+    await loadProjectFromUrl(v);
+  }catch(err){
+    alert("Projekt konnte nicht geladen werden.\n\n" +
+          "Eingabe: " + v + "\n" +
+          "Tipp: Auf GitHub Pages reicht oft der Dateiname. Alternativ Raw-URL nutzen.\n\n" +
+          "Details: " + (err?.message || err));
+  }
+});
+
+// Enter im URL-Feld lädt ebenfalls
+el("projectUrl")?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter"){
+    e.preventDefault();
+    el("loadProjectUrl")?.click();
+  }
+});
+
     });
 
     // Live updates
