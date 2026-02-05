@@ -288,7 +288,27 @@
       <textarea id="lines"></textarea>
     </div>
 
-    <h3>Schrift</h3>
+    
+<h3>Sprüche aus JSON laden</h3>
+<div class="rowAuto">
+  <div>
+    <label for="jsonPath">JSON-Datei im Repo (relativ zum Root, z. B. <code>sprueche.json</code>)</label>
+    <input id="jsonPath" type="text" placeholder="sprueche.json">
+  </div>
+  <button type="button" class="secondary" id="loadJsonBtn" style="min-width:auto;padding:8px 10px;">Laden</button>
+</div>
+<div class="row">
+  <div>
+    <label for="jsonBase">GitHub-Base-URL (nur nötig, wenn du die Datei lokal per <code>file://</code> öffnest)</label>
+    <input id="jsonBase" type="text"
+           placeholder="https://raw.githubusercontent.com/USER/REPO/main/">
+  </div>
+</div>
+<div class="hint">
+  Tipp: Wenn die Seite über GitHub Pages läuft, reicht der Dateiname (z. B. <code>sprueche.json</code>).<br>
+  Wenn du <code>index.html</code> lokal öffnest, trage einmal die Raw-URL deines Repos ein (endet mit <code>/</code>). Diese wird gespeichert.
+</div>
+<h3>Schrift</h3>
     <div class="row">
       <div>
         <label for="fontSelect">Font</label>
@@ -496,7 +516,121 @@
         cols: "1",
         autoFit: "off"
       }
-    };
+
+
+/* =======================
+   ✅ Sprüche aus JSON laden (lokal + GitHub)
+   - Wenn die Seite über http(s) läuft: lädt relativ (./datei.json)
+   - Wenn die Seite als file:// geöffnet ist: lädt über eine gespeicherte GitHub-Raw-Base-URL
+   ======================= */
+const JSON_BASE_KEY = "poster_customizer_json_base_v1";
+
+function normalizeBaseUrl(u){
+  u = (u || "").trim();
+  if (!u) return "";
+  // falls jemand eine GitHub Pages URL einträgt, akzeptieren wir sie auch
+  if (!u.endsWith("/")) u += "/";
+  return u;
+}
+
+function getJsonBaseUrl(){
+  // 1) input hat Vorrang (damit man testen kann)
+  const fromInput = el("jsonBase")?.value?.trim();
+  if (fromInput) return normalizeBaseUrl(fromInput);
+
+  // 2) gespeicherter Wert
+  const saved = localStorage.getItem(JSON_BASE_KEY);
+  if (saved) return normalizeBaseUrl(saved);
+
+  // 3) wenn wir nicht file:// sind, ist "aktuelles Verzeichnis" ausreichend
+  if (location.protocol !== "file:") return new URL(".", location.href).href;
+
+  return "";
+}
+
+function setJsonBaseUrl(u){
+  u = normalizeBaseUrl(u);
+  if (!u) return;
+  localStorage.setItem(JSON_BASE_KEY, u);
+}
+
+function guessGitHubRawBases(){
+  // Wenn die Seite auf GitHub Pages liegt, können wir zusätzlich eine Raw-URL ableiten (für direkte Fetches).
+  // Beispiel: https://USER.github.io/REPO/...  ->  https://raw.githubusercontent.com/USER/REPO/{main|master}/
+  try{
+    if (!location.hostname.endsWith("github.io")) return [];
+    const owner = location.hostname.split(".")[0];
+    const parts = location.pathname.replace(/^\/+/, "").split("/");
+    const repo = parts[0] || "";
+    if (!owner || !repo) return [];
+    return [
+      `https://raw.githubusercontent.com/${owner}/${repo}/main/`,
+      `https://raw.githubusercontent.com/${owner}/${repo}/master/`
+    ];
+  }catch(e){
+    return [];
+  }
+}
+
+async function fetchJsonFirst(urls){
+  let lastErr = null;
+  for (const u of urls){
+    if (!u) continue;
+    try{
+      const res = await fetch(u, {cache: "no-store"});
+      if (!res.ok) { lastErr = new Error(res.status + " " + res.statusText); continue; }
+      return await res.json();
+    }catch(e){
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error("Fetch fehlgeschlagen");
+}
+
+function extractLinesFromJson(data){
+  // akzeptiert: ["a","b"]  oder  {lines:[...]}  oder  {sprueche:[...]}  oder  {items:[...]}
+  if (Array.isArray(data)) return data;
+  if (data && typeof data === "object"){
+    if (Array.isArray(data.lines)) return data.lines;
+    if (Array.isArray(data.sprueche)) return data.sprueche;
+    if (Array.isArray(data.items)) return data.items;
+  }
+  return null;
+}
+
+async function loadQuotesJson(jsonPath){
+  jsonPath = (jsonPath || "").trim();
+  if (!jsonPath) throw new Error("Kein Dateiname");
+
+  // Base-URL ggf. speichern (wenn im Input gesetzt)
+  const baseFromInput = el("jsonBase")?.value?.trim();
+  if (baseFromInput) setJsonBaseUrl(baseFromInput);
+
+  const base = getJsonBaseUrl();
+  const here = new URL(".", location.href).href;
+
+  const candidates = [];
+
+  // 1) Wenn wir online laufen: relative URL im gleichen Ordner/Root
+  if (location.protocol !== "file:"){
+    candidates.push(new URL(jsonPath, here).href);
+  }
+
+  // 2) Base aus Input/LocalStorage (v.a. für file://)
+  if (base) candidates.push(new URL(jsonPath, base).href);
+
+  // 3) Falls GitHub Pages: Raw-URLs als Fallback
+  guessGitHubRawBases().forEach(b => candidates.push(new URL(jsonPath, b).href));
+
+  const data = await fetchJsonFirst(candidates);
+  const lines = extractLinesFromJson(data);
+  if (!lines) throw new Error("JSON-Format nicht erkannt (erwarte Array oder {lines:[...]})");
+
+  // textarea übernehmen + rendern
+  el("lines").value = lines.map(s => String(s ?? "").trim()).filter(Boolean).join("\n");
+  apply();
+  return true;
+}    };
 
     function applyTypePreset(name){
       const p = TYPE_PRESETS[name];
@@ -1073,6 +1207,31 @@ body{
     }
 
     // --- Wire up ---
+// JSON Loader UI
+try{
+  const savedBase = localStorage.getItem(JSON_BASE_KEY);
+  if (savedBase && el("jsonBase")) el("jsonBase").value = savedBase;
+}catch(e){}
+
+el("loadJsonBtn")?.addEventListener("click", async () => {
+  const name = el("jsonPath")?.value || "";
+  try{
+    await loadQuotesJson(name);
+  }catch(err){
+    alert("Konnte JSON nicht laden.\n\n" +
+          "Datei: " + name + "\n" +
+          "Tipp: Wenn du index.html lokal öffnest, trage oben die GitHub-Raw-Base-URL ein.\n\n" +
+          "Details: " + (err?.message || err));
+  }
+});
+
+// Enter im JSON-Feld lädt ebenfalls
+el("jsonPath")?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter"){
+    e.preventDefault();
+    el("loadJsonBtn")?.click();
+  }
+});
     el("apply").addEventListener("click", apply);
     el("reset").addEventListener("click", reset);
     el("exportHtml").addEventListener("click", exportHtml);
@@ -1136,11 +1295,30 @@ body{
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") panicShowPanel();
     });
-
     // Initial
-    el("lines").value = defaultLines.join("\n");
+    el("lines").value = defaultLines.join("
+");
+
+    const params = new URLSearchParams(location.search);
+    const jsonFromUrl = params.get("json") || params.get("quotes");
+
     if (!loadFromLocal()) reset();
     else apply();
+
+    // Optional: ?json=sprueche.json lädt Sprüche direkt beim Start
+    if (jsonFromUrl){
+      // kleine Verzögerung, damit UI/Fonts stehen
+      setTimeout(async () => {
+        try{
+          el("jsonPath").value = jsonFromUrl;
+          await loadQuotesJson(jsonFromUrl);
+        }catch(err){
+          console.warn("JSON aus URL konnte nicht geladen werden:", err);
+        }
+      }, 50);
+    }
+
+
   </script>
 </body>
 </html>
