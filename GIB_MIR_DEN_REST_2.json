@@ -1,0 +1,22 @@
+{
+  "titleText": "GIB MIR DEN REST!",
+  "lines": "Müll oder kein Müll?|Das ist hier die Frage!\n24/7 offen\nIch bin Müllionär|mit Deiner Hilfe\nMal sehen|was für mich abfällt?\nWer wird Müllionär?\nAufregen lohnt sich nicht|1. Mülleimer auf|2. Abfall rein|3. Mülleimer zu\nMein Lieblingsstück?|Die Sauberflöte!\nMüll ahoi\nArtgerechte Müllhaltung\nIch bin eine |Dreck-Queen\nIch habe Müll zum Fressen gern\nIch habe Hunger|Egal, wie voll ich bin|ich kann immer noch futtern",
+  "cols": "3",
+  "fontSelect": "Bebas Neue",
+  "fontWeight": "400",
+  "bubbleSize": "8",
+  "bubbleMin": "5.8",
+  "titleSize": "24",
+  "autoFit": "on",
+  "bg": "#f29a9a",
+  "bubbleBg": "#f66151",
+  "titleBg": "#f66151",
+  "textColor": "#000000",
+  "stroke": "#000000",
+  "strokeW": "5",
+  "radius": "14",
+  "bleed": "3",
+  "safe": "12",
+  "guides": "1",
+  "finalMode": false
+}

@@ -1,0 +1,22 @@
+{
+  "titleText": "IHRE PAPIERE, BITTE!",
+  "lines": "Dein Papiermüll| Dein Move\nPapier im Kübel|ist nicht übel\nIch kann eine Menge Papier einstecken\nIch bin für jedes |Papier zu haben\nAnnahmestelle für Papier\n24 Stunden für Papier geöffnet\nHeute Papier-Party bei mir?\nIch habe Papiermüll zum Fressen gern\nGib’s mir |Dein Papier!\nArtgerechte Papiermüllhaltung\nIch habe Hunger auf Papier\nIch bin ein |Papiermüll-King",
+  "cols": "3",
+  "fontSelect": "Bebas Neue",
+  "fontWeight": "400",
+  "bubbleSize": "8",
+  "bubbleMin": "5.8",
+  "titleSize": "24",
+  "autoFit": "on",
+  "bg": "#bcdcff",
+  "bubbleBg": "#7fb6ff",
+  "titleBg": "#8fc0ff",
+  "textColor": "#000000",
+  "stroke": "#000000",
+  "strokeW": "5",
+  "radius": "14",
+  "bleed": "3",
+  "safe": "12",
+  "guides": "1",
+  "finalMode": false
+}

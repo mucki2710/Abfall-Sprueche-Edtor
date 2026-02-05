@@ -1,0 +1,22 @@
+{
+  "titleText": "GIB MIR DEN REST!",
+  "lines": "Sei kein Ferkel|triff den Eimer!\nEin Wurf|ein Treffer|ein sauberer Planet\nDein Müll |Dein Move!\nGib MIR Futter|nicht der Natur\nAchtung|Dieser Mülleimer ist extrem hungrig\nIch bin für jeden Dreck zu haben\nMach den Wurf |Deines Lebens!\nDer tut nix|der will nur Müll\nMist im Kübel|ist nicht übel\nGib’s mir!|Tu ihn rein!\nLust auf dreckige |Geschäfte?\nIch kann ‘ne Menge einstecken\nAnnahmestelle|24 Stunden geöffnet\nSchlag mir den Bauch voll!\nHasta la vista!|Dreckstück!\nBitte füttern!\nHeute trash-party bei mir?\nIch fühle mich sooo leer",
+  "cols": "3",
+  "fontSelect": "Bebas Neue",
+  "fontWeight": "400",
+  "bubbleSize": "8",
+  "bubbleMin": "5.8",
+  "titleSize": "24",
+  "autoFit": "on",
+  "bg": "#f29a9a",
+  "bubbleBg": "#f66151",
+  "titleBg": "#f66151",
+  "textColor": "#000000",
+  "stroke": "#000000",
+  "strokeW": "5",
+  "radius": "14",
+  "bleed": "3",
+  "safe": "12",
+  "guides": "1",
+  "finalMode": false
+}

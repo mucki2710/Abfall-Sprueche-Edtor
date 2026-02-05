@@ -1,0 +1,22 @@
+{
+  "titleText": "PLASTIK-PARKPLATZ",
+  "lines": "Nur Plastik hier|das danken wir dir\nPlastik rein|die Welt soll sauber sein\nIch bin für jeden|Verpackungsdreck|zu haben\nGelb ist fein|Plastik rein!\nIn den Sack|zack zack zack\nPlastik hier rein|so ist's fein\nSei gut|rette Plastik!\nIch bin offen|für alles|was Plastik betrifft\nAlle fünf Minuten|verliebt sich|Plastik in den Eimer\nAlles im Eimer?\nIch wäre so gerne Müllionär|mit deinem Plastik\nPlastik hier rein|sonst muss ich wein'\nIch esse fast alle|Verpackungen|also fütter mich!\n24 Stunden geöffnet|für Verpackungsmüll",
+  "cols": "3",
+  "fontSelect": "Bebas Neue",
+  "fontWeight": "400",
+  "bubbleSize": "8",
+  "bubbleMin": "5.8",
+  "titleSize": "24",
+  "autoFit": "on",
+  "bg": "#ffe98a",
+  "bubbleBg": "#ffcf33",
+  "titleBg": "#ffd84d",
+  "textColor": "#000000",
+  "stroke": "#000000",
+  "strokeW": "5",
+  "radius": "14",
+  "bleed": "3",
+  "safe": "12",
+  "guides": "1",
+  "finalMode": false
+}
