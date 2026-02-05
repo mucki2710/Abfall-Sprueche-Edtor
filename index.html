@@ -1,0 +1,1147 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Poster Customizer Pro (| Softbreak + Save/Load + Panic Buttons)</title>
+
+  <link id="fontLink" rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Bebas+Neue:wght@400&display=swap">
+
+  <style>
+    @page { size: A3 portrait; margin: 0; }
+    *{ -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+    :root{
+      --bleed: 3mm; --safe: 12mm; --showGuides: 1;
+      --font: 'Bebas Neue', Arial, sans-serif; --fontWeight: 400;
+
+      --bg: #ffe98a; --titleBg: #ffd84d; --bubbleBg: #ffcf33;
+      --stroke: #000000; --text: #000000;
+
+      --strokeW: 5px; --radius: 14px;
+      --cols: 3; --gap: 10mm;
+
+      --titleSize: 24mm;
+      --bubbleSize: 8mm;
+      --bubbleMin: 5.8mm;
+      --letterSpacing: 0.5px;
+
+      --panelW: 390px;
+    }
+
+    html, body{ height: 100%; }
+    body{
+      margin:0; background:#eee;
+      display:grid; grid-template-columns: var(--panelW) 1fr;
+      gap:16px; padding:16px; box-sizing:border-box;
+      font-family: system-ui, -apple-system, Segoe UI, Arial, sans-serif;
+    }
+
+    .panel{
+      background:#fff; border:1px solid #ddd; border-radius:12px;
+      padding:14px; box-shadow:0 8px 20px rgba(0,0,0,.08);
+      height:fit-content; position:sticky; top:16px;
+    }
+    .panel h2{ margin:0 0 10px; font-size:18px; }
+    .panel h3{ margin:14px 0 8px; font-size:14px; color:#111; }
+    .row{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+    .rowAuto{ display:grid; grid-template-columns:1fr auto; gap:10px; margin-bottom:8px; align-items:end; }
+    label{ font-size:12px; color:#333; display:block; margin-bottom:4px; }
+
+    input[type="text"], select, textarea{
+      width:100%; box-sizing:border-box;
+      padding:8px 10px; border:1px solid #ccc; border-radius:10px;
+      font:14px/1.2 system-ui, -apple-system, Segoe UI, Arial, sans-serif;
+    }
+    textarea{ min-height:190px; resize:vertical; }
+    input[type="color"]{
+      width:100%; height:38px; border:1px solid #ccc; border-radius:10px;
+      padding:2px; background:#fff;
+    }
+    input[type="range"]{ width:100%; }
+
+    .btns{ display:flex; gap:10px; margin-top:10px; flex-wrap:wrap; }
+    button{
+      padding:10px 12px; border:1px solid #111; border-radius:12px;
+      background:#111; color:#fff; font-weight:700; cursor:pointer;
+      flex:1; min-width:150px;
+    }
+    button.secondary{ background:#fff; color:#111; }
+    button.preset{ background:#f4f4f4; color:#111; border-color:#ccc; }
+    button.preset:hover{ border-color:#111; }
+
+    .hint{
+      font-size:12px; color:#555; margin-top:8px; line-height:1.35;
+      background:#fafafa; border:1px solid #eee; border-radius:12px; padding:10px;
+    }
+
+    .toggle{
+      display:flex; align-items:center; gap:10px;
+      padding:10px 12px; border:1px solid #ddd; border-radius:12px; background:#fafafa;
+    }
+    .toggle input{ transform: scale(1.15); }
+
+    .stage{ display:flex; justify-content:center; align-items:flex-start; padding:8px; position:relative; }
+
+    .sheet{
+      width: calc(297mm + (var(--bleed) * 2));
+      height: calc(420mm + (var(--bleed) * 2));
+      background: var(--bg);
+      box-shadow: 0 10px 35px rgba(0,0,0,.25);
+      position: relative; overflow: hidden;
+      font-family: var(--font); font-weight: var(--fontWeight); color: var(--text);
+    }
+
+    .sheet::before{
+      content:"";
+      position:absolute;
+      top: calc(var(--bleed) + var(--safe));
+      left: calc(var(--bleed) + var(--safe));
+      right: calc(var(--bleed) + var(--safe));
+      bottom: calc(var(--bleed) + var(--safe));
+      border:2px dashed rgba(0,0,0,.35);
+      opacity: var(--showGuides);
+      pointer-events:none;
+      border-radius:8px;
+    }
+    .sheet::after{
+      content:"";
+      position:absolute;
+      top: var(--bleed); left: var(--bleed); right: var(--bleed); bottom: var(--bleed);
+      border:2px solid rgba(0,0,0,.55);
+      opacity: var(--showGuides);
+      pointer-events:none;
+      border-radius:8px;
+    }
+
+    .poster{
+      position:absolute;
+      top: var(--bleed); left: var(--bleed);
+      width:297mm; height:420mm;
+      box-sizing:border-box;
+      padding:14mm;
+      display:grid;
+      grid-template-rows:auto 1fr;
+      gap:12mm;
+    }
+
+    .title{
+      border: var(--strokeW) solid var(--stroke);
+      background: var(--titleBg);
+      padding: 8mm 10mm;
+      font-size: var(--titleSize);
+      letter-spacing:2px;
+      text-transform:uppercase;
+      line-height:1;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(var(--cols), 1fr);
+      gap: var(--gap);
+      align-content:start;
+    }
+
+    .bubble{
+      position:relative;
+      background:var(--bubbleBg);
+      border: var(--strokeW) solid var(--stroke);
+      border-radius: var(--radius);
+      padding: 9mm;
+      min-height: 40mm;
+      box-sizing:border-box;
+
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+
+      color: var(--text);
+      font-size: var(--bubbleSize);
+      line-height:1.15;
+      letter-spacing: var(--letterSpacing);
+      word-break: break-word;
+      hyphens:auto;
+
+      overflow: visible;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .bubble > span{
+      display:block; width:100%;
+      overflow:hidden;
+      max-height:100%;
+    }
+
+    .bubble::after{
+      content:"";
+      position:absolute;
+      left:18mm;
+      bottom:-14mm;
+      border:14mm solid transparent;
+      border-top-color: var(--stroke);
+      border-bottom:0;
+    }
+    .bubble::before{
+      content:"";
+      position:absolute;
+      left: calc(18mm + 2mm);
+      bottom:-11mm;
+      border:12mm solid transparent;
+      border-top-color: var(--bubbleBg);
+      border-bottom:0;
+    }
+    .tail-right::after{ left:auto; right:18mm; }
+    .tail-right::before{ left:auto; right: calc(18mm + 2mm); }
+
+    @media (max-width:1200px){
+      body{ grid-template-columns:1fr; }
+      .panel{ position:static; }
+      .sheet{ transform:scale(.82); transform-origin: top center; }
+    }
+
+    @media print{
+      html, body{ margin:0 !important; padding:0 !important; background:#fff !important; }
+      body{ display:block !important; }
+      .panel{ display:none !important; }
+      .panicBar{ display:none !important; }
+      .stage{ padding:0 !important; }
+      .sheet{ box-shadow:none !important; }
+      .sheet, .poster{ transform:none !important; }
+    }
+
+    body.final{
+      grid-template-columns:1fr;
+      padding:0; gap:0; background:#fff;
+    }
+    body.final .panel{ display:none !important; }
+    body.final .stage{ padding:0; }
+    body.final .sheet{ box-shadow:none; }
+
+    /* ✅ Panic buttons: immer sichtbar, auch im Final Mode */
+    .panicBar{
+      position: fixed;
+      right: 12px;
+      bottom: 12px;
+      display:flex;
+      gap:10px;
+      z-index: 999999;
+    }
+    .panicBar button{
+      min-width: auto;
+      padding: 10px 12px;
+      border-radius: 999px;
+      background:#fff;
+      color:#111;
+      border:1px solid #111;
+      box-shadow:0 10px 25px rgba(0,0,0,.18);
+      flex: initial;
+    }
+  </style>
+</head>
+
+<body>
+  <aside class="panel" id="panel">
+    <h2>Poster Customizer Pro</h2>
+
+    <div class="toggle">
+      <input type="checkbox" id="finalMode">
+      <label for="finalMode" style="margin:0;font-size:13px;">
+        Final Mode (Panel aus + Guides aus)
+      </label>
+    </div>
+
+    <h3>Presets</h3>
+    <div class="btns">
+      <button type="button" class="preset" id="presetYellow">Gelb</button>
+      <button type="button" class="preset" id="presetBlue">Blau</button>
+      <button type="button" class="preset" id="presetRed">Rot</button>
+      <button type="button" class="preset" id="typeA6">A6 Postkarte</button>
+
+    </div>
+
+    <h3>Text</h3>
+    <div class="row">
+      <div>
+        <label for="titleText">Titel</label>
+        <input id="titleText" type="text" value="PLASTIK-PARKPLATZ">
+      </div>
+      <div>
+        <label for="cols">Spalten</label>
+        <select id="cols">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3" selected>3</option>
+          <option value="4">4</option>
+        </select>
+      </div>
+    </div>
+
+    <div>
+      <label for="lines">Sprüche (eine Zeile = eine Blase; weicher Umbruch in der Blase mit <b>|</b>)</label>
+      <div class="rowAuto">
+        <div style="font-size:12px;color:#666;align-self:center;">Cursor setzen →</div>
+        <button type="button" class="secondary" id="insertPipe" style="min-width:auto;padding:8px 10px;">| einfügen</button>
+      </div>
+      <textarea id="lines"></textarea>
+    </div>
+
+    <h3>Schrift</h3>
+    <div class="row">
+      <div>
+        <label for="fontSelect">Font</label>
+        <select id="fontSelect">
+          <option value="Bebas Neue" selected>Bebas Neue</option>
+          <option value="Anton">Anton</option>
+          <option value="Oswald">Oswald</option>
+          <option value="Luckiest Guy">Luckiest Guy</option>
+          <option value="Montserrat">Montserrat</option>
+        </select>
+      </div>
+      <div>
+        <label for="fontWeight">Schnitt</label>
+        <select id="fontWeight">
+          <option value="400" selected>Normal</option>
+          <option value="700">Fett</option>
+        </select>
+      </div>
+    </div>
+
+    <h3>Schriftgröße Presets</h3>
+    <div class="btns">
+        <button type="button" class="preset" id="typeReadable">Lesbar</button>
+        <button type="button" class="preset" id="typePoster">Plakativ</button>
+        <button type="button" class="preset" id="typeBold">Sehr fett</button>
+    </div>
+
+
+    <div class="row">
+      <div>
+        <label>Basis Textgröße Blasen (<span id="bubbleSizeVal">8.0</span>mm)</label>
+        <input id="bubbleSize" type="range" min="6" max="16" step="0.1" value="8">
+      </div>
+      <div>
+        <label>Min. Auto-Fit (<span id="bubbleMinVal">5.8</span>mm)</label>
+        <input id="bubbleMin" type="range" min="4.8" max="14.0" step="0.1" value="5.8">
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Titelgröße (<span id="titleSizeVal">24</span>mm)</label>
+        <input id="titleSize" type="range" min="16" max="34" value="24">
+      </div>
+      <div>
+        <label>Auto-Typografie</label>
+        <select id="autoFit">
+          <option value="on" selected>An</option>
+          <option value="off">Aus</option>
+        </select>
+      </div>
+    </div>
+
+    <h3>Farben</h3>
+    <div class="row">
+      <div>
+        <label>Hintergrund</label>
+        <input id="bg" type="color" value="#ffe98a">
+      </div>
+      <div>
+        <label>Blasen</label>
+        <input id="bubbleBg" type="color" value="#ffcf33">
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Titel-Balken</label>
+        <input id="titleBg" type="color" value="#ffd84d">
+      </div>
+      <div>
+        <label>Textfarbe</label>
+        <input id="textColor" type="color" value="#000000">
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Randfarbe</label>
+        <input id="stroke" type="color" value="#000000">
+      </div>
+      <div>
+        <label>Randstärke (<span id="strokeWVal">5</span>px)</label>
+        <input id="strokeW" type="range" min="2" max="10" value="5">
+      </div>
+    </div>
+
+    <h3>Druck-Feinschliff</h3>
+    <div class="row">
+      <div>
+        <label>Beschnitt / Bleed (<span id="bleedVal">3</span>mm)</label>
+        <input id="bleed" type="range" min="0" max="6" step="1" value="3">
+      </div>
+      <div>
+        <label>Sicherheitsrand (<span id="safeVal">12</span>mm)</label>
+        <input id="safe" type="range" min="6" max="20" step="1" value="12">
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Hilfslinien</label>
+        <select id="guides">
+          <option value="1" selected>An</option>
+          <option value="0">Aus</option>
+        </select>
+      </div>
+      <div>
+        <label>Eckenradius (<span id="radiusVal">14</span>px)</label>
+        <input id="radius" type="range" min="0" max="30" value="14">
+      </div>
+    </div>
+
+    <h3>Projekt</h3>
+    <div class="btns">
+      <button type="button" class="secondary" id="saveProject">Projekt speichern</button>
+      <button type="button" class="secondary" id="loadProject">Projekt laden</button>
+      <input type="file" id="loadFile" accept="application/json" style="display:none">
+    </div>
+
+    <div class="btns">
+      <button type="button" id="apply">Übernehmen</button>
+      <button type="button" class="secondary" id="reset">Reset</button>
+      <button type="button" class="secondary" id="exportHtml">Export (HTML, bulletproof)</button>
+      <button type="button" class="secondary" id="printFinal">Final + Drucken (Chromium)</button>
+    </div>
+
+    <!-- ✅ NEU: Postkarten-Print -->
+    <div class="btns">o
+      <button type="button" class="secondary" id="printPostcards">
+        🖨️ Sprüche als Postkarten drucken (A6)
+      </button>
+    </div>
+
+    <div class="hint">
+      <b>Panic:</b> Unten rechts: <i>Panel zeigen</i> + <i>Auto-Save löschen</i> (immer erreichbar).<br>
+      <b>ESC</b> zeigt das Panel ebenfalls wieder.
+    </div>
+  </aside>
+
+  <main class="stage">
+    <section class="sheet" id="sheet">
+      <div class="poster">
+        <div class="title" id="title">PLASTIK-PARKPLATZ</div>
+        <div class="grid" id="grid"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ✅ PANIC BAR -->
+  <div class="panicBar">
+    <button type="button" id="panicShowPanel">Panel zeigen</button>
+    <button type="button" id="panicClearAutosave">Auto-Save löschen</button>
+  </div>
+
+  <script>
+    const el = (id) => document.getElementById(id);
+    const setVar = (name, value) => document.documentElement.style.setProperty(name, value);
+
+    const STORAGE_KEY = "poster_customizer_pro_state_v2";
+
+    const PRESETS = {
+      yellow: { bg:"#ffe98a", titleBg:"#ffd84d", bubbleBg:"#ffcf33" },
+      blue:   { bg:"#bcdcff", titleBg:"#8fc0ff", bubbleBg:"#7fb6ff" },
+      red:    { bg:"#f6b3b3", titleBg:"#f29a9a", bubbleBg:"#ef8f8f" }
+    };
+
+    const defaultLines = [
+      "Nur Plastik hier | das danken wir dir.",
+      "Plastik rein | die Welt soll sauber sein.",
+      "Ich bin für jeden Verpackungsdreck | zu haben.",
+      "Gelb ist fein | Plastik rein!",
+      "In den Sack | zack zack zack.",
+      "Plastik hier rein | so ist's fein.",
+      "Sei gut | rette Plastik!",
+      "Ich bin offen für alles, | was Plastik betrifft.",
+      "Alle fünf Minuten verliebt sich Plastik | in den Eimer.",
+      "Alles im Eimer?",
+      "Ich wäre so gerne Müllionär | mit deinem Plastik.",
+      "Plastik hier rein, | sonst muss ich wein'.",
+      "Ich esse fast alle Verpackungen, | also fütter mich!",
+      "24 Stunden geöffnet | für Verpackungsmüll"
+    ];
+
+    const TYPE_PRESETS = {
+      readable: {
+        bubbleSize: 8.5,
+        bubbleMin: 6.0,
+        titleSize: 22
+      },
+      poster: {
+        bubbleSize: 9.5,
+        bubbleMin: 6.4,
+        titleSize: 24
+      },
+      bold: {
+        bubbleSize: 10.5,
+        bubbleMin: 6.8,
+        titleSize: 26
+      },
+      a6: {
+        bubbleSize: 13.5,
+        bubbleMin: 12.5,
+        titleSize: 18,
+        cols: "1",
+        autoFit: "off"
+      }
+    };
+
+    function applyTypePreset(name){
+      const p = TYPE_PRESETS[name];
+      if (!p) return;
+
+      if (p.bubbleSize != null) el("bubbleSize").value = p.bubbleSize;
+      if (p.bubbleMin  != null) el("bubbleMin").value  = p.bubbleMin;
+      if (p.titleSize  != null) el("titleSize").value  = p.titleSize;
+
+      // ✅ NEU: Spalten + Autofit übernehmen, wenn im Preset vorhanden
+      if (p.cols != null) el("cols").value = String(p.cols);
+      if (p.autoFit != null) el("autoFit").value = p.autoFit;
+
+      apply();
+    }
+
+
+
+
+    function escapeHtml(s){
+      return String(s)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function loadFont(fontName, weight){
+      const fam = encodeURIComponent(fontName).replace(/%20/g, "+");
+      const w = Number(weight) || 400;
+      el("fontLink").href = `https://fonts.googleapis.com/css2?family=${fam}:wght@${w}&display=swap`;
+      setVar("--font", `'${fontName}', Arial, sans-serif`);
+      setVar("--fontWeight", String(w));
+    }
+
+    function renderBubbles(lines){
+      const grid = el("grid");
+      grid.innerHTML = "";
+      const unique = [...new Set(lines.map(s => (s||"").trim()).filter(Boolean))];
+
+      unique.forEach((text, i) => {
+        const d = document.createElement("div");
+        d.className = "bubble" + (i % 2 ? " tail-right" : "");
+        const span = document.createElement("span");
+        span.innerHTML = escapeHtml(text).replaceAll("|","<br>");
+        d.appendChild(span);
+        grid.appendChild(d);
+      });
+    }
+
+    function fitAllBubbles(){
+      if (el("autoFit").value !== "on") return;
+      const base = parseFloat(el("bubbleSize").value);
+      const min  = parseFloat(el("bubbleMin").value);
+
+      document.querySelectorAll(".bubble").forEach(b => {
+        const span = b.querySelector("span");
+        if (!span) return;
+
+        b.style.fontSize = base + "mm";
+        let current = base;
+        let n = 0;
+
+        while (n < 70 && current > min) {
+          const overflow = (span.scrollHeight > b.clientHeight) || (span.scrollWidth > b.clientWidth);
+          if (!overflow) break;
+          current = Math.max(min, current - 0.2);
+          b.style.fontSize = current.toFixed(1) + "mm";
+          n++;
+        }
+      });
+    }
+
+    function clamp(n, a, b){
+      n = Number(n);
+      if (Number.isNaN(n)) return a;
+      return Math.max(a, Math.min(b, n));
+    }
+    function isHexColor(s){ return typeof s === "string" && /^#[0-9a-fA-F]{6}$/.test(s); }
+
+    function getState(){
+      return {
+        titleText: el("titleText").value,
+        lines: el("lines").value,
+        cols: el("cols").value,
+
+        fontSelect: el("fontSelect").value,
+        fontWeight: el("fontWeight").value,
+
+        bubbleSize: el("bubbleSize").value,
+        bubbleMin: el("bubbleMin").value,
+        titleSize: el("titleSize").value,
+        autoFit: el("autoFit").value,
+
+        bg: el("bg").value,
+        bubbleBg: el("bubbleBg").value,
+        titleBg: el("titleBg").value,
+        textColor: el("textColor").value,
+        stroke: el("stroke").value,
+
+        strokeW: el("strokeW").value,
+        radius: el("radius").value,
+
+        bleed: el("bleed").value,
+        safe: el("safe").value,
+        guides: el("guides").value,
+
+        finalMode: el("finalMode").checked
+      };
+    }
+
+    function setState(state){
+      if (!state || typeof state !== "object") return false;
+      if (typeof state.lines !== "string" || typeof state.titleText !== "string") return false;
+
+      el("titleText").value = state.titleText;
+      el("lines").value = state.lines;
+      el("cols").value = ["2","3","4"].includes(String(state.cols)) ? String(state.cols) : "3";
+
+      if (state.fontSelect) el("fontSelect").value = state.fontSelect;
+      el("fontWeight").value = (String(state.fontWeight) === "700") ? "700" : "400";
+
+      el("bubbleSize").value = String(clamp(state.bubbleSize, 6, 10));
+      el("bubbleMin").value  = String(clamp(state.bubbleMin, 4.8, 7.0));
+      el("titleSize").value  = String(clamp(state.titleSize, 16, 34));
+      el("autoFit").value    = (state.autoFit === "off") ? "off" : "on";
+
+      if (isHexColor(state.bg)) el("bg").value = state.bg;
+      if (isHexColor(state.bubbleBg)) el("bubbleBg").value = state.bubbleBg;
+      if (isHexColor(state.titleBg)) el("titleBg").value = state.titleBg;
+      if (isHexColor(state.textColor)) el("textColor").value = state.textColor;
+      if (isHexColor(state.stroke)) el("stroke").value = state.stroke;
+
+      el("strokeW").value = String(clamp(state.strokeW, 2, 10));
+      el("radius").value  = String(clamp(state.radius, 0, 30));
+
+      el("bleed").value = String(clamp(state.bleed, 0, 6));
+      el("safe").value  = String(clamp(state.safe, 6, 20));
+      el("guides").value = (String(state.guides) === "0") ? "0" : "1";
+
+      el("finalMode").checked = !!state.finalMode;
+      document.body.classList.toggle("final", !!el("finalMode").checked);
+
+      apply();
+      return true;
+    }
+
+    function saveToLocal(){
+      try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(getState())); }
+      catch(e){ console.warn("Konnte nicht speichern:", e); }
+    }
+
+    function loadFromLocal(){
+      try{
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return false;
+        const state = JSON.parse(raw);
+        return setState(state);
+      }catch(e){
+        console.warn("Konnte nicht laden:", e);
+        return false;
+      }
+    }
+
+    function apply(){
+      el("title").textContent = (el("titleText").value || "").trim() || "TITEL";
+      setVar("--cols", el("cols").value);
+
+      loadFont(el("fontSelect").value, el("fontWeight").value);
+
+      const bs = el("bubbleSize").value;
+      el("bubbleSizeVal").textContent = Number(bs).toFixed(1);
+      setVar("--bubbleSize", bs + "mm");
+
+      const bm = el("bubbleMin").value;
+      el("bubbleMinVal").textContent = Number(bm).toFixed(1);
+      setVar("--bubbleMin", bm + "mm");
+
+      const ts = el("titleSize").value;
+      el("titleSizeVal").textContent = ts;
+      setVar("--titleSize", ts + "mm");
+
+      setVar("--bg", el("bg").value);
+      setVar("--bubbleBg", el("bubbleBg").value);
+      setVar("--titleBg", el("titleBg").value);
+      setVar("--text", el("textColor").value);
+      setVar("--stroke", el("stroke").value);
+
+      const sw = el("strokeW").value;
+      el("strokeWVal").textContent = sw;
+      setVar("--strokeW", sw + "px");
+
+      const rad = el("radius").value;
+      el("radiusVal").textContent = rad;
+      setVar("--radius", rad + "px");
+
+      const bleed = el("bleed").value;
+      el("bleedVal").textContent = bleed;
+      setVar("--bleed", bleed + "mm");
+
+      const safe = el("safe").value;
+      el("safeVal").textContent = safe;
+      setVar("--safe", safe + "mm");
+
+      setVar("--showGuides", el("guides").value);
+
+      renderBubbles(el("lines").value.split("\n"));
+      fitAllBubbles();
+      setTimeout(fitAllBubbles, 250);
+      setTimeout(fitAllBubbles, 800);
+
+      saveToLocal();
+    }
+
+    function applyPreset(name){
+      const p = PRESETS[name];
+      if (!p) return;
+      el("bg").value = p.bg;
+      el("titleBg").value = p.titleBg;
+      el("bubbleBg").value = p.bubbleBg;
+      apply();
+    }
+
+    function setFinalMode(on){
+      document.body.classList.toggle("final", !!on);
+      if (on) el("guides").value = "0";
+      apply();
+    }
+
+    function reset(){
+      el("finalMode").checked = false;
+      document.body.classList.remove("final");
+
+      el("titleText").value = "PLASTIK-PARKPLATZ";
+      el("cols").value = "3";
+      el("fontSelect").value = "Bebas Neue";
+      el("fontWeight").value = "400";
+
+      el("bubbleSize").value = "8";
+      el("bubbleMin").value = "5.8";
+      el("titleSize").value = "24";
+      el("autoFit").value = "on";
+
+      el("stroke").value = "#000000";
+      el("textColor").value = "#000000";
+      el("strokeW").value = "5";
+      el("radius").value = "14";
+
+      el("bleed").value = "3";
+      el("safe").value = "12";
+      el("guides").value = "1";
+
+      el("lines").value = defaultLines.join("\n");
+      applyPreset("yellow");
+    }
+
+    function insertAtCursor(textarea, insertText){
+      const start = textarea.selectionStart ?? textarea.value.length;
+      const end = textarea.selectionEnd ?? textarea.value.length;
+      textarea.setRangeText(insertText, start, end, "end");
+      textarea.focus();
+    }
+
+    function downloadProject(){
+      const data = JSON.stringify(getState(), null, 2);
+      const blob = new Blob([data], {type:"application/json;charset=utf-8"});
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = (el("titleText").value || "poster_project").replace(/[^\w\-]+/g, "_") + ".json";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+    }
+
+    function exportHtml(){
+      const rootStyles = getComputedStyle(document.documentElement);
+      const vars = [
+        "--bleed","--safe","--showGuides","--font","--fontWeight",
+        "--bg","--titleBg","--bubbleBg","--stroke","--text",
+        "--strokeW","--radius","--cols","--gap",
+        "--titleSize","--bubbleSize","--bubbleMin","--letterSpacing"
+      ].map(v => `${v}:${rootStyles.getPropertyValue(v).trim()};`).join("\n      ");
+
+      const title = el("title").textContent;
+      const bubbleHtml = [...document.querySelectorAll(".bubble > span")].map(s =>
+        s.innerHTML.replace(/<br\s*\/?>/gi, "<br>")
+      );
+
+      const fontName = el("fontSelect").value;
+      const weight = el("fontWeight").value;
+      const fam = encodeURIComponent(fontName).replace(/%20/g, "+");
+
+      const bubblesHtml = bubbleHtml.map((h,i) => {
+        const cls = "bubble" + (i % 2 ? " tail-right" : "");
+        return `<div class="${cls}"><span>${h}</span></div>`;
+      }).join("\n        ");
+
+      const html =
+`<!doctype html><html lang="de"><head><meta charset="utf-8" />
+<title>${escapeHtml(title)}</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${fam}:wght@${weight}&display=swap">
+<style>@page{size:A3 portrait;margin:0}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+:root{${vars}}
+body{margin:0}
+.sheet{width:calc(297mm + (var(--bleed)*2));height:calc(420mm + (var(--bleed)*2));background:var(--bg);position:relative;overflow:hidden;font-family:var(--font);font-weight:var(--fontWeight);color:var(--text)}
+.poster{position:absolute;top:var(--bleed);left:var(--bleed);width:297mm;height:420mm;box-sizing:border-box;padding:14mm;display:grid;grid-template-rows:auto 1fr;gap:12mm}
+.title{border:var(--strokeW) solid var(--stroke);background:var(--titleBg);padding:8mm 10mm;font-size:var(--titleSize);letter-spacing:2px;text-transform:uppercase;line-height:1}
+.grid{display:grid;grid-template-columns:repeat(var(--cols),1fr);gap:var(--gap);align-content:start}
+.bubble{position:relative;background:var(--bubbleBg);border:var(--strokeW) solid var(--stroke);border-radius:var(--radius);padding:9mm;min-height:40mm;box-sizing:border-box;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--text);font-size:var(--bubbleSize);line-height:1.15;letter-spacing:var(--letterSpacing);word-break:break-word;hyphens:auto;overflow:visible;break-inside:avoid;page-break-inside:avoid}
+.bubble>span{display:block;width:100%;overflow:hidden;max-height:100%}
+.bubble:after{content:"";position:absolute;left:18mm;bottom:-14mm;border:14mm solid transparent;border-top-color:var(--stroke);border-bottom:0}
+.bubble:before{content:"";position:absolute;left:calc(18mm + 2mm);bottom:-11mm;border:12mm solid transparent;border-top-color:var(--bubbleBg);border-bottom:0}
+.tail-right:after{left:auto;right:18mm}.tail-right:before{left:auto;right:calc(18mm + 2mm)}
+</style></head><body>
+<section class="sheet"><div class="poster">
+<div class="title">${escapeHtml(title)}</div>
+<div class="grid">${bubblesHtml}</div>
+</div></section></body></html>`;
+
+      const blob = new Blob([html], {type:"text/html;charset=utf-8"});
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = (title || "poster").replace(/[^\w\-]+/g, "_") + ".html";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    }
+
+    function printFinalChromium(){
+      const wasFinal = el("finalMode").checked;
+
+      el("finalMode").checked = true;
+      document.body.classList.add("final");
+      el("guides").value = "0";
+      apply();
+
+      fitAllBubbles();
+      setTimeout(() => {
+        fitAllBubbles();
+        setTimeout(() => {
+          window.print();
+          setTimeout(() => {
+            el("finalMode").checked = wasFinal;
+            document.body.classList.toggle("final", !!wasFinal);
+            apply();
+          }, 350);
+        }, 250);
+      }, 450);
+    }
+
+    /* =======================
+       ✅ NEU: Postkarten-Druck
+       ======================= */
+    function printPostcardsA6(){
+  // 2-up auf A4: zwei Sprechblasen pro Seite (oben/unten)
+  const raw = el("lines").value || "";
+  const lines = raw.split("\n").map(s => (s || "").trim()).filter(Boolean);
+  if (!lines.length){
+    alert("Keine Sprüche gefunden.");
+    return;
+  }
+
+  const root = getComputedStyle(document.documentElement);
+
+  // Preset-/Style-Übernahme vom Poster
+  const pageBg = root.getPropertyValue("--bg").trim() || "#ffffff";
+
+
+  const font = root.getPropertyValue("--font").trim() || "Arial, sans-serif";
+  const fontWeight = (el("fontWeight")?.value === "700") ? 700 : 400;
+  const bubbleBg = root.getPropertyValue("--bubbleBg").trim() || "#ffcf33";
+  const stroke = root.getPropertyValue("--stroke").trim() || "#000";
+  const strokeW = root.getPropertyValue("--strokeW").trim() || "5px";
+  const textColor = root.getPropertyValue("--text").trim() || "#000";
+  const radius = root.getPropertyValue("--radius").trim() || "14px";
+  const letterSpacing = root.getPropertyValue("--letterSpacing").trim() || "0.5px";
+
+  // Schriftgröße aus Poster-Slider ableiten (mm -> pt für A4-2up)
+  const bubbleSizeMM = parseFloat(root.getPropertyValue("--bubbleSize").trim()) || 8;
+  const printFontPt = Math.round(bubbleSizeMM * 4.0); // größer/kleiner: 3.0..3.6
+
+  const title = (el("titleText").value || "Abfall-Spruch").trim();
+
+  // Fontname robust aus dem Select holen und mit gewünschtem Gewicht laden
+  const fontName = el("fontSelect")?.value || "Bebas Neue";
+  const fam = encodeURIComponent(fontName).replace(/%20/g, "+");
+
+  const w = window.open("", "_blank");
+
+  const css = `
+  <style>
+    @page { size: A4 portrait; margin: 8mm; }
+    *{ -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+    html,body{
+  margin:0;
+  padding:0;
+  background:${pageBg};
+
+  background: color-mix(in srgb, ${pageBg} 90%, white);
+
+}
+body{
+  font-family: ${font};
+  font-weight: ${fontWeight};
+  font-synthesis: none;
+  color:${textColor};
+}
+
+
+    /* 2 Karten pro A4-Seite */
+    .sheet{
+      display:grid;
+      grid-template-rows: 1fr 1fr;
+      gap: 10mm;
+      height: calc(297mm - 16mm); /* A4 Höhe minus page margins (8mm oben+unten) */
+    }
+    .page{ page-break-after: always; }
+
+    .cell{
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      height:100%;
+    }
+
+    /* Sprechblase – größer, preset-getreu */
+    .bubble{
+      position:relative;
+      background:${bubbleBg};
+      border:${strokeW} solid ${stroke};
+      border-radius:${radius};
+      padding: 14mm 14mm;
+
+      width: 100%;
+      max-width: 185mm;      /* größer */
+      min-height: 95mm;      /* höher */
+
+      box-sizing:border-box;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+
+      color:${textColor};
+      font-weight:${fontWeight};
+      font-size: ${printFontPt}pt;   /* aus Poster abgeleitet */
+      line-height: 1.08;
+      letter-spacing: ${letterSpacing};
+
+      word-break: break-word;
+      hyphens:auto;
+    }
+    .bubble > span{ display:block; width:100%; }
+
+    /* Tail */
+    .bubble::after{
+      content:"";
+      position:absolute;
+      left:30mm;
+      bottom:-14mm;
+      border:14mm solid transparent;
+      border-top-color:${stroke};
+      border-bottom:0;
+    }
+    .bubble::before{
+      content:"";
+      position:absolute;
+      left: calc(30mm + 2mm);
+      bottom:-11mm;
+      border:12mm solid transparent;
+      border-top-color:${bubbleBg};
+      border-bottom:0;
+    }
+    .tail-right::after{ left:auto; right:30mm; }
+    .tail-right::before{ left:auto; right: calc(30mm + 2mm); }
+
+    .meta{
+      margin-top: 4mm;
+      width:100%;
+      max-width:185mm;
+      display:flex;
+      justify-content:space-between;
+      font-size:10pt;
+      color: rgba(0,0,0,.65);
+      font-weight:700;
+    }
+    .badge{
+      display:inline-block;
+      padding:2mm 4mm;
+      border-radius:999px;
+      border:2px solid ${stroke};
+      background: rgba(255,255,255,.45);
+      font-weight:700;
+      white-space:nowrap;
+    }
+
+    /* optional: feine Schnittlinie zwischen oben/unten (A4 halbieren) */
+    .cut{
+      position:fixed;
+      left:0; right:0;
+      top:50%;
+      border-top:1px dashed rgba(0,0,0,.25);
+      pointer-events:none;
+    }
+    @media print{
+      .cut{ display:block; }
+    }
+  </style>`;
+
+  // In 2er-Paare aufteilen: zwei Karten pro Seite
+  const pages = [];
+  for(let i=0;i<lines.length;i+=2) pages.push(lines.slice(i,i+2));
+
+  const htmlPages = pages.map((pair,pi)=>{
+    const a = pair[0] ?? "";
+    const b = pair[1] ?? "";
+    const idxA = pi*2 + 1;
+    const idxB = pi*2 + 2;
+
+    const bubbleA = `
+      <div>
+        <div class="bubble ${((idxA-1)%2)?'tail-right':''}">
+          <span>${escapeHtml(a).replaceAll("|","<br>")}</span>
+        </div>
+        <div class="meta"><span class="badge">♻️ ${escapeHtml(title)}</span><span>${idxA}/${lines.length}</span></div>
+      </div>`;
+
+    const bubbleB = b ? `
+      <div>
+        <div class="bubble ${((idxB-1)%2)?'tail-right':''}">
+          <span>${escapeHtml(b).replaceAll("|","<br>")}</span>
+        </div>
+        <div class="meta"><span class="badge">♻️ ${escapeHtml(title)}</span><span>${idxB}/${lines.length}</span></div>
+      </div>` : `<div></div>`;
+
+    return `
+      <div class="page">
+        <div class="cut"></div>
+        <div class="sheet">
+          <div class="cell">${bubbleA}</div>
+          <div class="cell">${bubbleB}</div>
+        </div>
+      </div>`;
+  }).join("");
+
+  w.document.open();
+  w.document.write(`<!doctype html>
+  <html lang="de">
+    <head>
+      <meta charset="utf-8">
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${fam}:wght@${fontWeight}&display=swap">
+      ${css}
+    </head>
+    <body>${htmlPages}</body>
+  </html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(()=> w.print(), 350);
+}
+
+
+
+
+    // Panic actions
+    function panicShowPanel(){
+      el("finalMode").checked = false;
+      document.body.classList.remove("final");
+      apply();
+    }
+    function panicClearAutosave(){
+      localStorage.removeItem(STORAGE_KEY);
+      reset();
+      alert("Auto-Save gelöscht. Reset geladen.");
+    }
+
+    // --- Wire up ---
+    el("apply").addEventListener("click", apply);
+    el("reset").addEventListener("click", reset);
+    el("exportHtml").addEventListener("click", exportHtml);
+    el("printFinal").addEventListener("click", printFinalChromium);
+
+    // ✅ NEU: Postkarten-Button
+    el("printPostcards").addEventListener("click", printPostcardsA6);
+
+    el("presetYellow").addEventListener("click", () => applyPreset("yellow"));
+    el("presetBlue").addEventListener("click", () => applyPreset("blue"));
+    el("presetRed").addEventListener("click", () => applyPreset("red"));
+
+    el("finalMode").addEventListener("change", (e) => setFinalMode(e.target.checked));
+
+    el("insertPipe").addEventListener("click", () => { insertAtCursor(el("lines"), "|"); apply(); });
+
+    // Optional hotkey: Alt+L inserts |
+    el("lines").addEventListener("keydown", (e) => {
+      if (e.altKey && (e.key === "l" || e.key === "L")) {
+        e.preventDefault();
+        insertAtCursor(el("lines"), "|");
+        apply();
+      }
+    });
+
+    el("typeReadable").addEventListener("click", () => applyTypePreset("readable"));
+        el("typePoster").addEventListener("click", () => applyTypePreset("poster"));
+        el("typeBold").addEventListener("click", () => applyTypePreset("bold"));
+        el("typeA6").addEventListener("click", () => applyTypePreset("a6"));
+
+
+
+    // Projekt speichern/laden
+    el("saveProject").addEventListener("click", downloadProject);
+    el("loadProject").addEventListener("click", () => el("loadFile").click());
+    el("loadFile").addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try{
+        const text = await file.text();
+        const state = JSON.parse(text);
+        if (!setState(state)) throw new Error("invalid state");
+        saveToLocal();
+      }catch(err){
+        alert("Datei konnte nicht geladen werden (kein gültiges JSON/State).");
+      }finally{
+        e.target.value = "";
+      }
+    });
+
+    // Live updates
+    const changeIds = ["titleText","cols","fontSelect","fontWeight","autoFit","guides","bg","bubbleBg","titleBg","textColor","stroke"];
+    const inputIds  = ["bubbleSize","bubbleMin","titleSize","strokeW","radius","bleed","safe"];
+    changeIds.forEach(id => el(id)?.addEventListener("change", apply));
+    inputIds.forEach(id => el(id)?.addEventListener("input", apply));
+
+    // Panic buttons + ESC
+    el("panicShowPanel").addEventListener("click", panicShowPanel);
+    el("panicClearAutosave").addEventListener("click", panicClearAutosave);
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") panicShowPanel();
+    });
+
+    // Initial
+    el("lines").value = defaultLines.join("\n");
+    if (!loadFromLocal()) reset();
+    else apply();
+  </script>
+</body>
+</html>
+
